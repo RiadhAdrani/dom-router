@@ -5,7 +5,7 @@ export interface BaseRawRoute<T = unknown> {
   element: T;
   errorElement: T;
   redirectTo: string;
-  children: Array<BaseRawRoute>;
+  children: Array<RawRoute>;
   onLoaded: () => void;
   onBeforeLoaded: () => void;
   onUnLoaded: () => void;
@@ -30,6 +30,7 @@ export type RawRoute<T = unknown> = WrapperRawRoute<T> | PathRawRoute<T> | Named
 export interface NamedDestinationRequest {
   name: string;
   query?: Record<string, string | number>;
+  params?: Record<string, string>;
   hash?: string;
 }
 
@@ -55,7 +56,7 @@ export enum RouteType {
 
 export interface Segment {
   value: string;
-  isParam?: boolean;
+  isParam: boolean;
 }
 
 export interface BaseRoute {
@@ -84,6 +85,11 @@ export interface PathRoute<T = unknown> extends Omit<PathRawRoute<T>, 'children'
 
 export type Route<T = unknown> = WrapperRoute<T> | CatchRoute<T> | CatchAllRoute<T> | PathRoute<T>;
 
+export type CachedRoute<T = unknown> = Route<T> & {
+  steps: Array<Route<T>>;
+  catchRoute?: Route<T>;
+};
+
 export enum RouterType {
   Browser = 'browser',
   Hash = 'hash',
@@ -104,6 +110,7 @@ export interface RouterObject<T = unknown> extends Omit<RouterConfig, 'routes'> 
   type: RouterType;
   unload: () => void;
   onChanged: () => void;
+  cache: RouterCache;
 }
 
 export type HistoryArguments = [{ path: string }, string, string];
@@ -111,4 +118,9 @@ export type HistoryArguments = [{ path: string }, string, string];
 export interface RouterEngine {
   getPath: () => string;
   createHistoryArgs: (path: string) => HistoryArguments;
+}
+
+export interface RouterCache {
+  sequence: Array<Route>;
+  catchRoute: Route | undefined;
 }

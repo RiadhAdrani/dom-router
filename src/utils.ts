@@ -1,11 +1,20 @@
-import { NamedDestinationRequest, PathRoute, RawRoute, Route, RouteType, Segment } from 'types.js';
+import {
+  BaseRoute,
+  CachedRoute,
+  NamedDestinationRequest,
+  PathRoute,
+  RawRoute,
+  Route,
+  RouteType,
+  Segment,
+} from './types.js';
 
 export const err = (msg: string): string => `[Dom-Router]: ${msg}`;
 
-export const isPathValid = (base: string): boolean => {
+export const isPathValid = (path: string): boolean => {
   // should start with a "/"
 
-  return base.startsWith('/');
+  return path.startsWith('/');
 };
 
 export const deriveRawRouteType = (route: RawRoute): RouteType => {
@@ -24,10 +33,18 @@ export const deriveRawRouteType = (route: RawRoute): RouteType => {
     return RouteType.CatchAll;
   }
 
-  return RouteType.Path;
+  if (route.path && isPathValid(route.path)) {
+    return RouteType.Path;
+  }
+
+  throw new Error(err('unable to derive route type'));
 };
 
 export const segmentisePath = (path: string): Array<Segment> => {
+  if (path === '/') {
+    return [{ value: '', isParam: false }];
+  }
+
   return path.split('/').map(value => ({ value, isParam: value.startsWith(':') }));
 };
 
@@ -36,19 +53,14 @@ export const transformRawRoutes = <T>(rawRoutes: Array<RawRoute<T>>): Array<Rout
     // we need to know the type of the route
     const type = deriveRawRouteType(raw);
 
-    const route = { ...raw, type } as unknown as Route;
-    route.children = [];
+    const base: BaseRoute = { children: [], params: [], segments: [] };
 
-    // TODO: we need stricter checks for each type
+    const route = { ...base, ...raw, type } as Route;
+
     if (type === RouteType.Path) {
       const $route = route as unknown as PathRoute;
 
       const path = route.path as string;
-
-      // check if path starts with '/'
-      if (!isPathValid(path)) {
-        throw new Error(err(`invalid route path "${path}" : should start with "/"`));
-      }
 
       // check for multiple segments
       $route.segments = segmentisePath(path);
@@ -70,41 +82,31 @@ export const transformRawRoutes = <T>(rawRoutes: Array<RawRoute<T>>): Array<Rout
   return routes;
 };
 
-export const findNamedRoute = (name: string, routes: Array<Route>): Route | undefined => {
-  for (const route of routes) {
-    // match name
-    if (route.name === name) {
-      return route;
-    }
-
-    // search in children
-    const res = findNamedRoute(name, route.children);
-
-    if (res) return res;
-  }
-
-  return undefined;
-};
-
 export const createPathFromNamedDestination = (
   destination: NamedDestinationRequest,
-  routes: Array<Route>,
-  prevPath = '',
+  routes: Array<CachedRoute>,
+  base?: string,
 ): string | undefined => {
-  let path: string | undefined;
+  const { name, params } = destination;
 
-  // find the named path
-  for (const route of routes) {
-    if (route.name === destination.name) {
-      // found it
-      path = `${prevPath}${path}`;
-    }
+  const route = routes.find(it => it.name === name);
 
-    // search in children
-    path = createPathFromNamedDestination({ name: destination.name }, route.children, route.path);
-  }
+  if (!route) return;
 
-  if (!path) return;
+  let path = route.steps.reduce((acc, el) => {
+    const url = el.segments
+      .map(it => {
+        if (it.isParam) {
+          // replace with param
+          return params ? `${params[it.value.substring(1)]}` : 'undefined';
+        }
+
+        return it.value;
+      })
+      .join('/');
+
+    return acc + url;
+  }, '');
 
   // add query
   if (destination.query) {
@@ -122,5 +124,39 @@ export const createPathFromNamedDestination = (
     path = `${path}#${destination.hash}`;
   }
 
+  if (base) {
+    path = `${base}${path}`;
+  }
+
   return path;
+};
+
+export const cacheRoutes = (
+  routes: Array<Route>,
+  previousSteps: Array<Route> = [],
+  previouisCatchAllRoute?: Route,
+): Array<CachedRoute> => {
+  const cached: Array<CachedRoute> = [];
+
+  const catchAllRoute = routes.find(it => it.type === RouteType.CatchAll) ?? previouisCatchAllRoute;
+
+  const catchRoute = routes.find(it => it.type === RouteType.Catch) ?? catchAllRoute;
+
+  previouisCatchAllRoute;
+
+  routes.forEach(route => {
+    const steps = [...previousSteps, route];
+
+    if (route.type !== RouteType.Wrapper) {
+      const cachedRoute: CachedRoute = { ...route, steps, catchRoute };
+
+      cached.push(cachedRoute);
+    }
+
+    const childrenCache = cacheRoutes(route.children, steps, catchAllRoute);
+
+    cached.push(...childrenCache);
+  });
+
+  return cached;
 };

@@ -1,7 +1,22 @@
 import { RouterEngine } from 'types.js';
 
+/** create an url object with the given path.
+ * do not include base in the path.
+ */
+export const constructUrlWithHashPath = (path: string): URL => {
+  const { protocol, hostname } = location;
+
+  const href = `${protocol}//${hostname}${path}`;
+
+  return new URL(href);
+};
+
 export const getPath: RouterEngine['getPath'] = () => {
-  return location.hash.substring(1);
+  const path = location.hash.substring(1);
+
+  const url = constructUrlWithHashPath(path);
+
+  return url.pathname;
 };
 
 export const createHistoryArgs: RouterEngine['createHistoryArgs'] = (path: string) => {
