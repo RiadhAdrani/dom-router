@@ -1,6 +1,7 @@
 import {
   BaseRoute,
   CachedRoute,
+  ClosestRoute,
   NamedDestinationRequest,
   PathRoute,
   RawRoute,
@@ -41,10 +42,6 @@ export const deriveRawRouteType = (route: RawRoute): RouteType => {
 };
 
 export const segmentisePath = (path: string): Array<Segment> => {
-  if (path === '/') {
-    return [{ value: '', isParam: false }];
-  }
-
   return path.split('/').map(value => ({ value, isParam: value.startsWith(':') }));
 };
 
@@ -148,7 +145,21 @@ export const cacheRoutes = (
     const steps = [...previousSteps, route];
 
     if (route.type !== RouteType.Wrapper) {
-      const cachedRoute: CachedRoute = { ...route, steps, catchRoute };
+      const data: Pick<CachedRoute, 'fullParams' | 'fullPath'> = { fullParams: [], fullPath: '' };
+
+      steps.forEach(
+        it => {
+          const url = [RouteType.Catch, RouteType.CatchAll].includes(it.type)
+            ? `/${it.path}`
+            : it.segments.map(it => it.value).join('/');
+
+          data.fullPath = `${data.fullPath}${url}`;
+          data.fullParams.push(...it.params);
+        },
+        { fullPath: '', allParams: [] },
+      );
+
+      const cachedRoute: CachedRoute = { ...route, ...data, steps, catchRoute };
 
       cached.push(cachedRoute);
     }
@@ -159,4 +170,102 @@ export const cacheRoutes = (
   });
 
   return cached;
+};
+
+export const matchPath = (segmentsSlice: Array<string>, route: Route): boolean => {
+  if (segmentsSlice.length !== route.segments.length) {
+    return false;
+  }
+
+  return segmentsSlice.every((seg, index) => {
+    const s = route.segments[index];
+
+    return s.value === seg || s.isParam;
+  });
+};
+
+export const matchClosestRoute = (path: string, routes: Array<CachedRoute>): ClosestRoute => {
+  // try and match route exactly
+  const exact = routes.find(it => it.fullPath === path);
+
+  if (exact) {
+    const params = exact.params.reduce(
+      (acc, param) => {
+        return { ...acc, [param]: param };
+      },
+      {} as Record<string, string>,
+    );
+
+    return {
+      params,
+      route: exact,
+      steps: exact.steps,
+    };
+  }
+
+  const pathSegments = path.split('/');
+
+  let matchingRoutes: Array<CachedRoute> = routes;
+
+  for (let i = 0; i < pathSegments.length; i++) {
+    // first, check for exact matches
+    let filtered = matchingRoutes.filter(it => {
+      const routeSegments = it.fullPath.split('/');
+
+      const segment = routeSegments[i];
+
+      return segment === pathSegments[i];
+    });
+
+    if (filtered.length === 0) {
+      // check dynamic routes
+      filtered = matchingRoutes.filter(it => {
+        const routeSegments = it.fullPath.split('/');
+
+        const segment = routeSegments[i];
+
+        return segment.startsWith(':');
+      });
+    }
+
+    if (filtered.length === 0) break;
+
+    matchingRoutes = filtered;
+  }
+
+  // get the shortest
+  const match = matchingRoutes.sort((a, b) => a.steps.length - b.steps.length)[0];
+
+  if (match) {
+    const routeSegments = match.fullPath.split('/');
+
+    const params: ClosestRoute['params'] = {};
+
+    routeSegments.forEach((it, index) => {
+      if (!it.startsWith(':')) return;
+
+      const value = pathSegments[index];
+
+      params[it.substring(1)] = value;
+    });
+
+    const steps = match.steps;
+
+    if (routeSegments.length < pathSegments.length && match.catchRoute) {
+      steps.push(match.catchRoute);
+    }
+
+    return { params, route: match, steps };
+  }
+
+  // nothing close found, try and match the catch all route
+  const catchAll = routes.find(it => it.fullPath === '/**');
+
+  if (catchAll) {
+    return { params: {}, route: catchAll, steps: catchAll.steps };
+  }
+
+  throw new Error(
+    err('missing catch all-route : Your application should implement a root catch all route'),
+  );
 };

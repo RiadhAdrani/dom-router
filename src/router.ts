@@ -1,17 +1,23 @@
 import browserRouter from './browser.router.js';
 import hashRouter from './hash.router.js';
 import {
+  CatchAllRawRoute,
   DestinationOptions,
   DestinationRequest,
-  Route,
-  RouteType,
   RouterCache,
   RouterConfig,
   RouterEngine,
   RouterObject,
   RouterType,
 } from './types.js';
-import { createPathFromNamedDestination, err, isPathValid, transformRawRoutes } from './utils.js';
+import {
+  cacheRoutes,
+  createPathFromNamedDestination,
+  err,
+  isPathValid,
+  matchClosestRoute,
+  transformRawRoutes,
+} from './utils.js';
 
 /**
  * store the singleton
@@ -37,20 +43,33 @@ export const useEngine = (): RouterEngine => {
 export const createRouter = <T = unknown>(config: RouterConfig<T>) => {
   if (router) {
     throw new Error(
-      err('a router is already defined, please unmount the old one before create a new one'),
+      err('a router is already defined, please unmount the old one before creating a new one'),
     );
   }
 
-  const { routes, base, correctScrolling, transformTitle, type, onUnloaded, onChanged } = config;
+  const {
+    routes,
+    base,
+    correctScrolling,
+    transformTitle,
+    type,
+    onUnloaded,
+    onChanged,
+    catchAllElement,
+  } = config;
   // prepare a new router
   const newRouter: RouterObject = {
     unload() {},
     onChanged() {},
+    catchAllElement,
     type: type ?? RouterType.Browser,
     routes: [],
     cache: {
-      catchRoute: undefined,
-      sequence: [],
+      currentRoute: undefined,
+      routes: [],
+      processedPaths: {},
+      params: {},
+      steps: [],
     },
   };
 
@@ -84,22 +103,49 @@ export const createRouter = <T = unknown>(config: RouterConfig<T>) => {
   }
 
   // process routes
-  newRouter.routes = transformRawRoutes(routes);
+  const transformed = transformRawRoutes(routes);
+
+  newRouter.routes = transformed;
+
+  const cache: RouterCache = {
+    processedPaths: {},
+    routes: cacheRoutes(transformed),
+    params: {},
+    steps: [],
+  };
+
+  newRouter.cache = cache;
 
   // check for root directory
-  const rootExists = newRouter.routes.find(route => route.path === '/');
+  const rootExists = cache.routes.find(route => route.fullPath === '/');
   if (!rootExists) {
-    //
+    // throw
+    throw new Error('no root route found');
+  }
+
+  // check for catch all and add it
+  const catcher = cache.routes.find(route => route.fullPath === '/**');
+  if (!catcher) {
+    const catchAll: CatchAllRawRoute = { path: '**', element: catchAllElement };
+
+    const transformed = transformRawRoutes([catchAll]);
+
+    const cached = cacheRoutes(transformed);
+
+    newRouter.routes.push(...transformed);
+    newRouter.cache.routes.push(...cached);
   }
 
   // add popstate event listener
   const listener = () => {
     const path = useEngine().getPath();
 
-    useRouter().cache = processPath(path);
+    const router = useRouter();
+
+    processPath(path);
 
     // call on change
-    newRouter.onChanged?.();
+    router.onChanged?.();
   };
 
   window.addEventListener('popstate', listener);
@@ -108,125 +154,35 @@ export const createRouter = <T = unknown>(config: RouterConfig<T>) => {
   newRouter.unload = () => {
     window.removeEventListener('popstate', listener);
 
+    useRouter().onUnloaded?.();
+
     // reset router
     router = undefined;
-
-    newRouter.onUnloaded?.();
   };
 
   router = newRouter;
 
-  useRouter().cache = processPath(useEngine().getPath());
+  processPath(useEngine().getPath());
 };
 
-export const matchPath = (segmentsSlice: Array<string>, route: Route): boolean => {
-  if (segmentsSlice.length !== route.segments.length) {
-    return false;
+export const processPath = (path: string) => {
+  const router = useRouter();
+
+  // check if path already handled
+  const already = router.cache.processedPaths[path];
+
+  if (already) {
+    router.cache.currentRoute = already;
+    return;
   }
 
-  return segmentsSlice.every((seg, index) => {
-    const s = route.segments[index];
+  const closest = matchClosestRoute(path, router.cache.routes);
 
-    return s.value === seg || s.isParam;
-  });
-};
+  const { params, route, steps } = closest;
 
-export const matchPathInWrapper = (
-  slices: Array<string>,
-  wrapper: Route,
-): Array<Route> | undefined => {
-  if (wrapper.type !== RouteType.Wrapper) return;
-
-  const sequence = [wrapper];
-
-  // find a route matching the slice
-  const route = wrapper.children.find(it => {
-    it.type === RouteType.Path && matchPath(slices, it);
-  });
-
-  if (route) {
-    return [...sequence, route];
-  }
-
-  const nestedSequence = wrapper.children.reduce(
-    (acc, child) => {
-      if (acc || child.type !== RouteType.Wrapper) return acc;
-
-      const seq = matchPathInWrapper(slices, child);
-
-      return seq;
-    },
-    undefined as Array<Route> | undefined,
-  );
-
-  if (nestedSequence) {
-    return [...sequence, ...nestedSequence];
-  }
-
-  return undefined;
-};
-
-export const processPath = (path: string): RouterCache => {
-  const cache: RouterCache = { catchRoute: undefined, sequence: [] };
-
-  const segments = path.split('/');
-
-  const sequence: Array<Route> = [];
-
-  let routes: Array<Route> = useRouter().routes;
-
-  for (let i = 0; i < segments.length; i++) {
-    // ? find the appropriate path
-
-    let route: Route | undefined;
-    // first, we try to find the route matching the rest or a portion of the segments
-    // we can have a route with multiple segments like : "/user/options/about"
-    let sliceTo = segments.length;
-
-    while (sliceTo > 1) {
-      const slice = segments.slice(i, sliceTo);
-
-      // ! we can have a composed route with params that matches
-      route = routes.find(it => matchPath(slice, it));
-
-      // try to find the sequence in a wrapper
-      if (!route) {
-        for (const wrapper of routes) {
-          const nested = matchPathInWrapper(slice, wrapper);
-
-          if (nested) {
-            route = nested.at(-1);
-
-            break;
-          }
-        }
-      }
-
-      if (route) {
-        // skip i to "sliceTo"
-        i = sliceTo - 1;
-        break;
-      }
-
-      sliceTo--;
-    }
-
-    if (route) {
-      cache.catchRoute =
-        routes.find(it => it.type === RouteType.Catch) ??
-        routes.find(it => it.type === RouteType.CatchAll);
-
-      routes = route.children;
-      sequence.push(route);
-
-      continue;
-    }
-
-    // no route is matched, just break
-    break;
-  }
-
-  return cache;
+  router.cache.params = params;
+  router.cache.steps = steps;
+  router.cache.currentRoute = route;
 };
 
 export const navigate = (destination: DestinationRequest, options?: DestinationOptions) => {
@@ -245,7 +201,7 @@ export const navigate = (destination: DestinationRequest, options?: DestinationO
     path = destination;
   } else {
     // named
-    const generated = createPathFromNamedDestination(destination, router.routes);
+    const generated = createPathFromNamedDestination(destination, router.cache.routes);
 
     if (typeof generated !== 'string') {
       throw new Error(`named path "${destination.name}" is not found`);
@@ -270,8 +226,7 @@ export const navigate = (destination: DestinationRequest, options?: DestinationO
 };
 
 export const getParams = (): Record<string, string> => {
-  // TODO:
-  return {};
+  return useRouter().cache.params;
 };
 
 export const getSearchParams = (): Record<string, string> => {

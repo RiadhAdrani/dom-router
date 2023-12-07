@@ -78,7 +78,13 @@ describe('deriveRawRouteType', () => {
 
 describe('segmentisePath', () => {
   const tests: Array<{ path: string; expected: Array<Segment> }> = [
-    { path: '/', expected: [{ value: '', isParam: false }] },
+    {
+      path: '/',
+      expected: [
+        { value: '', isParam: false },
+        { value: '', isParam: false },
+      ],
+    },
     {
       path: '/main',
       expected: [
@@ -114,7 +120,10 @@ describe('transformRawRoutes', () => {
         {
           children: [],
           params: [],
-          segments: [{ value: '', isParam: false }],
+          segments: [
+            { value: '', isParam: false },
+            { value: '', isParam: false },
+          ],
           type: RouteType.Path,
           path: '/',
         },
@@ -230,6 +239,8 @@ describe('cachRoutes', () => {
       ...root,
       steps: [wrapper, root],
       catchRoute: catchAll,
+      fullPath: '/',
+      fullParams: [],
     });
 
     // home
@@ -237,6 +248,8 @@ describe('cachRoutes', () => {
       ...home,
       steps: [wrapper, home],
       catchRoute: catchAll,
+      fullPath: '/home',
+      fullParams: [],
     });
 
     // about
@@ -244,6 +257,8 @@ describe('cachRoutes', () => {
       ...about,
       steps: [wrapper, about],
       catchRoute: catchAll,
+      fullPath: '/about',
+      fullParams: [],
     });
 
     // catch all
@@ -251,6 +266,8 @@ describe('cachRoutes', () => {
       ...catchAll,
       steps: [wrapper, catchAll],
       catchRoute: catchAll,
+      fullPath: '/**',
+      fullParams: [],
     });
 
     // users
@@ -258,6 +275,8 @@ describe('cachRoutes', () => {
       ...users,
       steps: [wrapper, users],
       catchRoute: catchAll,
+      fullPath: '/users',
+      fullParams: [],
     });
 
     // users catch
@@ -265,6 +284,8 @@ describe('cachRoutes', () => {
       ...usersCatch,
       steps: [wrapper, users, usersCatch],
       catchRoute: usersCatch,
+      fullPath: '/users/*',
+      fullParams: [],
     });
 
     // user
@@ -272,6 +293,8 @@ describe('cachRoutes', () => {
       ...user,
       steps: [wrapper, users, user],
       catchRoute: usersCatch,
+      fullPath: '/users/:id',
+      fullParams: ['id'],
     });
 
     // user dashboard catch
@@ -279,6 +302,8 @@ describe('cachRoutes', () => {
       ...userDashboardCatch,
       steps: [wrapper, users, user, userDashboardWrapper, userDashboardCatch],
       catchRoute: userDashboardCatch,
+      fullPath: '/users/:id/*',
+      fullParams: ['id'],
     });
 
     // user dashboard about
@@ -286,6 +311,8 @@ describe('cachRoutes', () => {
       ...userDashboardAbout,
       steps: [wrapper, users, user, userDashboardWrapper, userDashboardAbout],
       catchRoute: userDashboardCatch,
+      fullPath: '/users/:id/about',
+      fullParams: ['id'],
     });
 
     // user dashboard desc
@@ -293,13 +320,16 @@ describe('cachRoutes', () => {
       ...userDashboardDesc,
       steps: [wrapper, users, user, userDashboardWrapper, userDashboardDesc],
       catchRoute: userDashboardCatch,
+      fullPath: '/users/:id/desc',
+      fullParams: ['id'],
     });
-
     // user search
     expect(cachedRoutes[10]).toStrictEqual({
       ...userSearch,
       steps: [wrapper, users, userSearch],
       catchRoute: usersCatch,
+      fullPath: '/users/search',
+      fullParams: [],
     });
   });
 });

@@ -1,4 +1,4 @@
-import { RouterEngine } from 'types.js';
+import { RouterEngine } from './types.js';
 
 /** create an url object with the given path.
  * do not include base in the path.

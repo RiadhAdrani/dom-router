@@ -88,6 +88,8 @@ export type Route<T = unknown> = WrapperRoute<T> | CatchRoute<T> | CatchAllRoute
 export type CachedRoute<T = unknown> = Route<T> & {
   steps: Array<Route<T>>;
   catchRoute?: Route<T>;
+  fullPath: string;
+  fullParams: Array<string>;
 };
 
 export enum RouterType {
@@ -100,6 +102,7 @@ export interface RouterConfig<T = unknown> {
   routes: Array<RawRoute<T>>;
   base?: string;
   type?: RouterType;
+  catchAllElement: T;
   onChanged?: () => void;
   transformTitle?: (title: string) => string;
   onUnloaded?: () => void;
@@ -121,6 +124,15 @@ export interface RouterEngine {
 }
 
 export interface RouterCache {
-  sequence: Array<Route>;
-  catchRoute: Route | undefined;
+  routes: Array<CachedRoute>;
+  currentRoute?: CachedRoute;
+  processedPaths: Record<string, CachedRoute>;
+  steps: Array<Route>;
+  params: Record<string, string>;
+}
+
+export interface ClosestRoute {
+  route: CachedRoute;
+  steps: Array<Route>;
+  params: Record<string, string>;
 }
