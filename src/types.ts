@@ -85,9 +85,11 @@ export interface PathRoute<T = unknown> extends Omit<PathRawRoute<T>, 'children'
 
 export type Route<T = unknown> = WrapperRoute<T> | CatchRoute<T> | CatchAllRoute<T> | PathRoute<T>;
 
+export type RouteWithParentRef<T = unknown> = Route<T> & { parent?: RouteWithParentRef<T> };
+
 export type CachedRoute<T = unknown> = Route<T> & {
   steps: Array<Route<T>>;
-  catchRoute?: Route<T>;
+  parent?: RouteWithParentRef;
   fullPath: string;
   fullParams: Array<string>;
 };

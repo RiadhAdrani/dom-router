@@ -5,6 +5,7 @@ import {
   deriveRawRouteType,
   err,
   isPathValid,
+  matchClosestRoute,
   segmentisePath,
   transformRawRoutes,
 } from '../utils.js';
@@ -17,12 +18,12 @@ const routes = transformRawRoutes([
       { path: '/', name: 'Root' },
       { path: '/home', name: 'Home' },
       { path: '/about', name: 'About' },
-      { path: '**' },
+      { path: '**', name: 'RootCatchAll' },
       {
         path: '/users',
         name: 'Users',
         children: [
-          { path: '*' },
+          { path: '*', name: 'UserCatch' },
           {
             path: '/:id',
             name: 'User',
@@ -38,6 +39,56 @@ const routes = transformRawRoutes([
             ],
           },
           { path: '/search', name: 'UserSearch' },
+        ],
+      },
+      {
+        path: '/hello',
+        children: [{ path: '/world' }],
+      },
+      {
+        path: '/first-dynamic',
+        children: [
+          { path: '/:id', name: 'First' },
+          { path: '/:token', name: 'Token' },
+        ],
+      },
+      {
+        path: '/static-first',
+        children: [
+          { path: '/:id', name: 'StaticFirstId' },
+          { path: '/static', name: 'Static' },
+        ],
+      },
+      {
+        path: '/catcher',
+        name: 'Catcher',
+        children: [
+          { path: '**', name: 'AllCatcher' },
+          { path: '*', name: 'LocalCatcher' },
+          { element: 'wrapper', children: [{ path: '/all', name: 'All' }] },
+        ],
+      },
+      {
+        path: '/inherit',
+        name: 'Inherit',
+        children: [
+          { path: '*', name: 'InheritCatcher' },
+          { element: 'wrapper', children: [{ path: '/test', name: 'InheritTest' }] },
+          { path: '/useless', name: 'Useless' },
+          {
+            path: '/:id',
+            children: [
+              { path: '/hello' },
+              { path: '**', name: 'OverrideCatcher' },
+              {
+                path: '/nested',
+                children: [
+                  { path: '/about' },
+                  { path: '/sections', children: [{ path: '/about' }, { path: '/settings' }] },
+                ],
+              },
+            ],
+          },
         ],
       },
     ],
@@ -212,124 +263,113 @@ describe('createPathFromNamedDestination', () => {
   });
 });
 
-describe('cachRoutes', () => {
-  it('should cache a routes', () => {
-    const wrapper = routes[0];
-    const root = wrapper.children[0];
-    const home = wrapper.children[1];
-    const about = wrapper.children[2];
-    const catchAll = wrapper.children[3];
+describe('cacheRoutes', () => {
+  const wrapper = routes[0];
+  const users = wrapper.children[4];
+  const user = users.children[1];
+  const userDashboardWrapper = user.children[0];
+  const userDashboardAbout = userDashboardWrapper.children[1];
 
-    const users = wrapper.children[4];
-    const usersCatch = users.children[0];
-    const userSearch = users.children[2];
+  const cachedRoutes = cacheRoutes(routes);
 
-    const user = users.children[1];
-    const userDashboardWrapper = user.children[0];
-    const userDashboardCatch = userDashboardWrapper.children[0];
-    const userDashboardAbout = userDashboardWrapper.children[1];
-    const userDashboardDesc = userDashboardWrapper.children[2];
+  it('should create full path', () => {
+    expect(cachedRoutes[8].fullPath).toBe('/users/:id/about');
+  });
 
-    const cachedRoutes = cacheRoutes(routes);
+  it('should create full path', () => {
+    expect(cachedRoutes[8].fullParams).toStrictEqual(['id']);
+  });
 
-    expect(cachedRoutes.length).toBe(11);
+  it('should add parent', () => {
+    expect(cachedRoutes[8].parent).toBeDefined();
+  });
 
-    // root
-    expect(cachedRoutes[0]).toStrictEqual({
-      ...root,
-      steps: [wrapper, root],
-      catchRoute: catchAll,
-      fullPath: '/',
-      fullParams: [],
-    });
+  it('should create steps correctly', () => {
+    const route = cachedRoutes[8];
 
-    // home
-    expect(cachedRoutes[1]).toStrictEqual({
-      ...home,
-      steps: [wrapper, home],
-      catchRoute: catchAll,
-      fullPath: '/home',
-      fullParams: [],
-    });
+    expect(route.steps).toStrictEqual([
+      wrapper,
+      users,
+      user,
+      userDashboardWrapper,
+      userDashboardAbout,
+    ]);
+  });
+});
 
-    // about
-    expect(cachedRoutes[2]).toStrictEqual({
-      ...about,
-      steps: [wrapper, about],
-      catchRoute: catchAll,
-      fullPath: '/about',
-      fullParams: [],
-    });
+describe('matchClosestRoute', () => {
+  const cache = cacheRoutes(routes);
 
-    // catch all
-    expect(cachedRoutes[3]).toStrictEqual({
-      ...catchAll,
-      steps: [wrapper, catchAll],
-      catchRoute: catchAll,
-      fullPath: '/**',
-      fullParams: [],
-    });
+  const catcher = cache.find(
+    it => it.path === '/**' && it.type === (RouteType.CatchAll as string),
+  ) as Route;
 
-    // users
-    expect(cachedRoutes[4]).toStrictEqual({
-      ...users,
-      steps: [wrapper, users],
-      catchRoute: catchAll,
-      fullPath: '/users',
-      fullParams: [],
-    });
+  it('should match an exact route', () => {
+    const matched = matchClosestRoute('/users/search', cache, catcher);
 
-    // users catch
-    expect(cachedRoutes[5]).toStrictEqual({
-      ...usersCatch,
-      steps: [wrapper, users, usersCatch],
-      catchRoute: usersCatch,
-      fullPath: '/users/*',
-      fullParams: [],
-    });
+    expect(matched.route.fullPath).toBe('/users/search');
+  });
 
-    // user
-    expect(cachedRoutes[6]).toStrictEqual({
-      ...user,
-      steps: [wrapper, users, user],
-      catchRoute: usersCatch,
-      fullPath: '/users/:id',
-      fullParams: ['id'],
-    });
+  it('should add params to exact route', () => {
+    const matched = matchClosestRoute('/users/:id/about', cache, catcher);
 
-    // user dashboard catch
-    expect(cachedRoutes[7]).toStrictEqual({
-      ...userDashboardCatch,
-      steps: [wrapper, users, user, userDashboardWrapper, userDashboardCatch],
-      catchRoute: userDashboardCatch,
-      fullPath: '/users/:id/*',
-      fullParams: ['id'],
-    });
+    expect(matched.route.fullPath).toBe('/users/:id/about');
+    expect(matched.params).toStrictEqual({ id: ':id' });
+  });
 
-    // user dashboard about
-    expect(cachedRoutes[8]).toStrictEqual({
-      ...userDashboardAbout,
-      steps: [wrapper, users, user, userDashboardWrapper, userDashboardAbout],
-      catchRoute: userDashboardCatch,
-      fullPath: '/users/:id/about',
-      fullParams: ['id'],
-    });
+  it('should match closest route dynamic', () => {
+    const matched = matchClosestRoute('/users/:id/hello', cache, catcher);
 
-    // user dashboard desc
-    expect(cachedRoutes[9]).toStrictEqual({
-      ...userDashboardDesc,
-      steps: [wrapper, users, user, userDashboardWrapper, userDashboardDesc],
-      catchRoute: userDashboardCatch,
-      fullPath: '/users/:id/desc',
-      fullParams: ['id'],
-    });
-    // user search
-    expect(cachedRoutes[10]).toStrictEqual({
-      ...userSearch,
-      steps: [wrapper, users, userSearch],
-      catchRoute: usersCatch,
-      fullPath: '/users/search',
-      fullParams: [],
-    });
+    expect(matched.route.name).toBe('User');
+  });
+
+  it('should match closest route static', () => {
+    const matched = matchClosestRoute('/users/search/hello', cache, catcher);
+
+    expect(matched.route.name).toBe('UserSearch');
+  });
+
+  it('should prioritize static routes', () => {
+    const matched = matchClosestRoute('/static-first/static', cache, catcher);
+
+    expect(matched.route.name).toBe('Static');
+  });
+
+  it('should get first route', () => {
+    const matched = matchClosestRoute('/first-dynamic/test', cache, catcher);
+
+    expect(matched.route.name).toBe('First');
+  });
+
+  it('should appened catcher route at the end of a shorter route', () => {
+    const matched = matchClosestRoute('/catcher/test', cache, catcher);
+
+    expect(matched.route.name).toBe('Catcher');
+
+    const mCatcher = matched.steps.at(-1);
+
+    expect(mCatcher?.name).toBe('LocalCatcher');
+  });
+
+  it('should inherit catcher', () => {
+    const matched = matchClosestRoute('/inherit/test/yeeted', cache, catcher);
+
+    const mCatcher = matched.steps.at(-1);
+
+    expect(mCatcher?.name).toBe('RootCatchAll');
+  });
+
+  it('should inherit catcher (deep)', () => {
+    const matched = matchClosestRoute('/inherit/123/nested/sections/name', cache, catcher);
+
+    const mCatcher = matched.steps.at(-1);
+
+    expect(mCatcher?.name).toBe('OverrideCatcher');
+  });
+
+  it('should create params record', () => {
+    const matched = matchClosestRoute('/inherit/123/nested/sections/name', cache, catcher);
+
+    expect(matched.params).toStrictEqual({ id: '123' });
   });
 });

@@ -4,6 +4,7 @@ import {
   CatchAllRawRoute,
   DestinationOptions,
   DestinationRequest,
+  Route,
   RouterCache,
   RouterConfig,
   RouterEngine,
@@ -124,11 +125,13 @@ export const createRouter = <T = unknown>(config: RouterConfig<T>) => {
   }
 
   // check for catch all and add it
-  const catcher = cache.routes.find(route => route.fullPath === '/**');
+  let catcher: Route | undefined = cache.routes.find(route => route.fullPath === '/**');
   if (!catcher) {
     const catchAll: CatchAllRawRoute = { path: '**', element: catchAllElement };
 
     const transformed = transformRawRoutes([catchAll]);
+
+    catcher = transformed[0];
 
     const cached = cacheRoutes(transformed);
 
@@ -142,7 +145,7 @@ export const createRouter = <T = unknown>(config: RouterConfig<T>) => {
 
     const router = useRouter();
 
-    processPath(path);
+    processPath(path, catcher as Route);
 
     // call on change
     router.onChanged?.();
@@ -162,10 +165,10 @@ export const createRouter = <T = unknown>(config: RouterConfig<T>) => {
 
   router = newRouter;
 
-  processPath(useEngine().getPath());
+  processPath(useEngine().getPath(), catcher);
 };
 
-export const processPath = (path: string) => {
+export const processPath = (path: string, catcher: Route) => {
   const router = useRouter();
 
   // check if path already handled
@@ -176,7 +179,7 @@ export const processPath = (path: string) => {
     return;
   }
 
-  const closest = matchClosestRoute(path, router.cache.routes);
+  const closest = matchClosestRoute(path, router.cache.routes, catcher);
 
   const { params, route, steps } = closest;
 

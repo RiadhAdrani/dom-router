@@ -1,9 +1,9 @@
 {
-  "name": "dom-router",
-  "description": "Javascript library",
+  "name": "@riadh-adrani/dom-router",
+  "description": "Router for the DOM",
   "repository": {
     "type": "git",
-    "url": "https://github.com"
+    "url": "https://github.com/RiadhAdrani/dom-router"
   },
   "version": "0.0.0",
   "type": "module",

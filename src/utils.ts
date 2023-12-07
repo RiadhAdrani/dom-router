@@ -7,6 +7,7 @@ import {
   RawRoute,
   Route,
   RouteType,
+  RouteWithParentRef,
   Segment,
 } from './types.js';
 
@@ -131,15 +132,9 @@ export const createPathFromNamedDestination = (
 export const cacheRoutes = (
   routes: Array<Route>,
   previousSteps: Array<Route> = [],
-  previouisCatchAllRoute?: Route,
+  parent?: RouteWithParentRef,
 ): Array<CachedRoute> => {
   const cached: Array<CachedRoute> = [];
-
-  const catchAllRoute = routes.find(it => it.type === RouteType.CatchAll) ?? previouisCatchAllRoute;
-
-  const catchRoute = routes.find(it => it.type === RouteType.Catch) ?? catchAllRoute;
-
-  previouisCatchAllRoute;
 
   routes.forEach(route => {
     const steps = [...previousSteps, route];
@@ -159,12 +154,14 @@ export const cacheRoutes = (
         { fullPath: '', allParams: [] },
       );
 
-      const cachedRoute: CachedRoute = { ...route, ...data, steps, catchRoute };
+      const cachedRoute: CachedRoute = { ...route, ...data, steps, parent };
 
       cached.push(cachedRoute);
     }
 
-    const childrenCache = cacheRoutes(route.children, steps, catchAllRoute);
+    const asParent: RouteWithParentRef = { ...route, parent };
+
+    const childrenCache = cacheRoutes(route.children, steps, asParent);
 
     cached.push(...childrenCache);
   });
@@ -172,26 +169,47 @@ export const cacheRoutes = (
   return cached;
 };
 
-export const matchPath = (segmentsSlice: Array<string>, route: Route): boolean => {
-  if (segmentsSlice.length !== route.segments.length) {
-    return false;
+export const findAppropriateCatchRoute = (
+  route: RouteWithParentRef,
+  local = false,
+): Route | undefined => {
+  if (local) {
+    const localCatcher = route.children.find(it => it.type === RouteType.Catch);
+
+    if (localCatcher) return localCatcher;
   }
 
-  return segmentsSlice.every((seg, index) => {
-    const s = route.segments[index];
+  // find local catch all
+  const all = route.children.find(it => it.type === RouteType.CatchAll);
 
-    return s.value === seg || s.isParam;
-  });
+  if (all) return all;
+
+  if (!route.parent) {
+    return undefined;
+  }
+
+  // check parent
+  return findAppropriateCatchRoute(route.parent);
 };
 
-export const matchClosestRoute = (path: string, routes: Array<CachedRoute>): ClosestRoute => {
+export const matchClosestRoute = (
+  path: string,
+  routes: Array<CachedRoute>,
+  rootCatcher: Route,
+): ClosestRoute => {
   // try and match route exactly
   const exact = routes.find(it => it.fullPath === path);
 
   if (exact) {
-    const params = exact.params.reduce(
-      (acc, param) => {
-        return { ...acc, [param]: param };
+    const params = exact.fullPath.split('/').reduce(
+      (acc, seg) => {
+        if (seg.startsWith(':')) {
+          const key = seg.substring(1);
+
+          acc[key] = seg;
+        }
+
+        return acc;
       },
       {} as Record<string, string>,
     );
@@ -224,7 +242,7 @@ export const matchClosestRoute = (path: string, routes: Array<CachedRoute>): Clo
 
         const segment = routeSegments[i];
 
-        return segment.startsWith(':');
+        return segment && segment.startsWith(':');
       });
     }
 
@@ -251,8 +269,16 @@ export const matchClosestRoute = (path: string, routes: Array<CachedRoute>): Clo
 
     const steps = match.steps;
 
-    if (routeSegments.length < pathSegments.length && match.catchRoute) {
-      steps.push(match.catchRoute);
+    if (routeSegments.length < pathSegments.length) {
+      let catcher: Route | undefined;
+
+      if (match.parent) {
+        catcher = findAppropriateCatchRoute(match, true);
+      }
+
+      catcher ??= rootCatcher;
+
+      steps.push(catcher);
     }
 
     return { params, route: match, steps };

@@ -1,10 +1,3 @@
-# package-ts
+# dom-router
 
-Template generated with `@riadh-adrani/create-package`
-
-## TODO
-
-- Rename `npmignore` to `.npmignore`
-- Rename `gitignore` to `.gitignore`
-- Add `NPM` secret key to Github.
-- Provide read/write access for github actions.
+A web-based `router` that could be used with any UI tool.
