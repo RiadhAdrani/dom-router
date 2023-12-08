@@ -1,7 +1,19 @@
 import { RouterEngine } from './types.js';
 
-export const getPath = (): string => {
-  return location.pathname;
+export const getPath = (base?: string): string => {
+  let path = location.pathname;
+
+  if (base) {
+    if (path.startsWith(base)) {
+      path = path.replace(base, '');
+    }
+  }
+
+  if (!path) {
+    path = '/';
+  }
+
+  return path;
 };
 
 export const createHistoryArgs: RouterEngine['createHistoryArgs'] = (path: string) => {

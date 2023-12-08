@@ -46,7 +46,7 @@ export const segmentisePath = (path: string): Array<Segment> => {
   return path.split('/').map(value => ({ value, isParam: value.startsWith(':') }));
 };
 
-export const transformRawRoutes = <T>(rawRoutes: Array<RawRoute<T>>): Array<Route> => {
+export const transformRawRoutes = <T>(rawRoutes: Array<RawRoute<T>>): Array<Route<T>> => {
   const routes: Array<Route> = rawRoutes.map(raw => {
     // we need to know the type of the route
     const type = deriveRawRouteType(raw);
@@ -77,7 +77,7 @@ export const transformRawRoutes = <T>(rawRoutes: Array<RawRoute<T>>): Array<Rout
     return route;
   });
 
-  return routes;
+  return routes as Array<Route<T>>;
 };
 
 export const createPathFromNamedDestination = (
@@ -129,11 +129,11 @@ export const createPathFromNamedDestination = (
   return path;
 };
 
-export const cacheRoutes = (
-  routes: Array<Route>,
-  previousSteps: Array<Route> = [],
+export const cacheRoutes = <T = unknown>(
+  routes: Array<Route<T>>,
+  previousSteps: Array<Route<T>> = [],
   parent?: RouteWithParentRef,
-): Array<CachedRoute> => {
+): Array<CachedRoute<T>> => {
   const cached: Array<CachedRoute> = [];
 
   routes.forEach(route => {
@@ -166,7 +166,7 @@ export const cacheRoutes = (
     cached.push(...childrenCache);
   });
 
-  return cached;
+  return cached as Array<CachedRoute<T>>;
 };
 
 export const findAppropriateCatchRoute = (
@@ -192,11 +192,11 @@ export const findAppropriateCatchRoute = (
   return findAppropriateCatchRoute(route.parent);
 };
 
-export const matchClosestRoute = (
+export const matchClosestRoute = <T>(
   path: string,
-  routes: Array<CachedRoute>,
-  rootCatcher: Route,
-): ClosestRoute => {
+  routes: Array<CachedRoute<T>>,
+  rootCatcher: Route<T>,
+): ClosestRoute<T> => {
   // try and match route exactly
   const exact = routes.find(it => it.fullPath === path);
 
@@ -281,7 +281,7 @@ export const matchClosestRoute = (
       steps.push(catcher);
     }
 
-    return { params, route: match, steps };
+    return { params, route: match, steps } as ClosestRoute<T>;
   }
 
   // nothing close found, try and match the catch all route

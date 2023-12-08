@@ -11,8 +11,18 @@ export const constructUrlWithHashPath = (path: string): URL => {
   return new URL(href);
 };
 
-export const getPath: RouterEngine['getPath'] = () => {
-  const path = location.hash.substring(1);
+export const getPath: RouterEngine['getPath'] = base => {
+  let path = location.hash.substring(1);
+
+  if (base) {
+    if (path.startsWith(base)) {
+      path = path.replace(base, '');
+    }
+  }
+
+  if (!path) {
+    path = '/';
+  }
 
   const url = constructUrlWithHashPath(path);
 

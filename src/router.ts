@@ -23,26 +23,26 @@ import {
 /**
  * store the singleton
  */
-let router: RouterObject | undefined;
+export let singleton: RouterObject | undefined;
 
 export const useRouter = (): RouterObject => {
-  if (!router) {
+  if (!singleton) {
     throw new Error(err('unable to use router, it is not created yet'));
   }
 
-  return router;
+  return singleton;
 };
 
 export const useEngine = (): RouterEngine => {
-  if (!router) {
+  if (!singleton) {
     throw new Error(err('unable to get engine, router is not created'));
   }
 
-  return router.type === RouterType.Hash ? hashRouter : browserRouter;
+  return singleton.type === RouterType.Hash ? hashRouter : browserRouter;
 };
 
 export const createRouter = <T = unknown>(config: RouterConfig<T>) => {
-  if (router) {
+  if (singleton) {
     throw new Error(
       err('a router is already defined, please unmount the old one before creating a new one'),
     );
@@ -160,10 +160,10 @@ export const createRouter = <T = unknown>(config: RouterConfig<T>) => {
     useRouter().onUnloaded?.();
 
     // reset router
-    router = undefined;
+    singleton = undefined;
   };
 
-  router = newRouter;
+  singleton = newRouter;
 
   processPath(useEngine().getPath(), catcher);
 };
@@ -189,7 +189,7 @@ export const processPath = (path: string, catcher: Route) => {
 };
 
 export const navigate = (destination: DestinationRequest, options?: DestinationOptions) => {
-  if (!router) {
+  if (!singleton) {
     throw new Error(err('cannot "navigate" without creating a router'));
   }
   if (typeof destination === 'number') {
@@ -204,7 +204,7 @@ export const navigate = (destination: DestinationRequest, options?: DestinationO
     path = destination;
   } else {
     // named
-    const generated = createPathFromNamedDestination(destination, router.cache.routes);
+    const generated = createPathFromNamedDestination(destination, singleton.cache.routes);
 
     if (typeof generated !== 'string') {
       throw new Error(`named path "${destination.name}" is not found`);
@@ -213,8 +213,8 @@ export const navigate = (destination: DestinationRequest, options?: DestinationO
     path = generated;
   }
 
-  if (router.base) {
-    path = `${router.base}${path}`;
+  if (singleton.base) {
+    path = `${singleton.base}${path}`;
   }
 
   const args = useEngine().createHistoryArgs(path);

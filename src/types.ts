@@ -3,13 +3,7 @@ export interface BaseRawRoute<T = unknown> {
   name: string;
   title: string;
   element: T;
-  errorElement: T;
-  redirectTo: string;
   children: Array<RawRoute>;
-  onLoaded: () => void;
-  onBeforeLoaded: () => void;
-  onUnLoaded: () => void;
-  onBeforeUnLoaded: () => void;
 }
 
 export type WrapperRawRoute<T = unknown> = Pick<BaseRawRoute<T>, 'element'> &
@@ -121,20 +115,20 @@ export interface RouterObject<T = unknown> extends Omit<RouterConfig, 'routes'> 
 export type HistoryArguments = [{ path: string }, string, string];
 
 export interface RouterEngine {
-  getPath: () => string;
-  createHistoryArgs: (path: string) => HistoryArguments;
+  getPath: (base?: string) => string;
+  createHistoryArgs: (path: string, base?: string) => HistoryArguments;
 }
 
-export interface RouterCache {
-  routes: Array<CachedRoute>;
-  currentRoute?: CachedRoute;
-  processedPaths: Record<string, CachedRoute>;
-  steps: Array<Route>;
+export interface RouterCache<T = unknown> {
+  routes: Array<CachedRoute<T>>;
+  currentRoute?: CachedRoute<T>;
+  processedPaths: Record<string, CachedRoute<T>>;
+  steps: Array<Route<T>>;
   params: Record<string, string>;
 }
 
-export interface ClosestRoute {
-  route: CachedRoute;
-  steps: Array<Route>;
+export interface ClosestRoute<T = unknown> {
+  route: CachedRoute<T>;
+  steps: Array<Route<T>>;
   params: Record<string, string>;
 }
