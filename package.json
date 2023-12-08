@@ -25,7 +25,7 @@
     "test:once": "vitest run",
     "build:clean": "rm -rf dist",
     "build:types": "tsc --project tsconfig.build.json",
-    "build": "yarn build:clean && tsc --project tsconfig.build.jsony",
+    "build": "tsc -p tsconfig.build.json",
     "check:lint": "npx eslint . --ext .ts",
     "check:format": "npx prettier --check ./",
     "check:types": "tsc --project tsconfig.json --noEmit",
@@ -41,7 +41,7 @@
     "eslint": "^8.55.0",
     "jsdom": "^23.0.1",
     "prettier": "3.1.0",
-    "typescript": "^5.2.0",
+    "typescript": "^5.3.3",
     "vite": "^5.0.4",
     "vitest": "^0.34.6"
   }

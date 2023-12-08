@@ -1,12 +1,9 @@
-import { afterEach, describe, expect, it, vitest, beforeEach, beforeAll } from 'vitest';
+import { afterEach, describe, expect, it, vitest, beforeEach } from 'vitest';
 import { RouterInstance } from '../class.js';
 import { err } from '../utils.js';
-import { mockBrowser } from './mock.js';
 
 describe('router class', () => {
   let router: RouterInstance;
-
-  beforeAll(() => mockBrowser());
 
   beforeEach(() => {
     history.replaceState('/', '', '/');
