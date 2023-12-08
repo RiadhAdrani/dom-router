@@ -20,6 +20,23 @@ export const createHistoryArgs: RouterEngine['createHistoryArgs'] = (path: strin
   return [{ path }, '', path];
 };
 
-const browserRouter: RouterEngine = { getPath, createHistoryArgs };
+export const getQueryParams: RouterEngine['getQueryParams'] = () => {
+  const search = location.search;
+
+  const params = new URLSearchParams(search);
+
+  const record = Array.from(params.entries()).reduce(
+    (acc, it) => {
+      acc[it[0]] = it[1];
+
+      return acc;
+    },
+    {} as Record<string, string>,
+  );
+
+  return record;
+};
+
+const browserRouter: RouterEngine = { getPath, createHistoryArgs, getQueryParams };
 
 export default browserRouter;

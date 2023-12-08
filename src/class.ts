@@ -1,7 +1,9 @@
 import {
   CatchAllRawRoute,
+  ClosestRoute,
   DestinationOptions,
   DestinationRequest,
+  NamedDestinationRequest,
   Route,
   RouterCache,
   RouterConfig,
@@ -112,28 +114,25 @@ export class RouterInstance<T = unknown> {
     this.onUnloaded?.();
   }
 
-  engine() {
+  get engine() {
     return this.type === RouterType.Browser ? browserRouter : hashRouter;
   }
 
   processPath() {
-    const path = this.engine().getPath(this.base);
+    let path = this.engine.getPath(this.base);
 
-    // check if path already handled
-    const already = this.cache.processedPaths[path];
-
-    if (already) {
-      this.cache.currentRoute = already.route;
-      return;
+    if (path !== '/' && path.endsWith('/')) {
+      path = path.slice(0, -1);
     }
 
-    const closest = matchClosestRoute<T>(path, this.cache.routes, this.catcher);
+    const cached = this.cache.processedPaths[path];
 
-    const { params, route, steps } = closest;
+    const target: ClosestRoute<T> =
+      cached ?? matchClosestRoute<T>(path, this.cache.routes, this.catcher);
 
-    this.cache.params = params;
-    this.cache.steps = steps;
-    this.cache.currentRoute = route;
+    this.updateCache(path, target);
+
+    const { route } = target;
 
     // update title
     if (route.title) {
@@ -148,23 +147,12 @@ export class RouterInstance<T = unknown> {
     if (this.correctScrolling) {
       window.scrollTo({ top: 0 });
     }
-
-    this.cache.processedPaths[path] = closest;
   }
 
   navigate(destination: DestinationRequest, options?: DestinationOptions) {
     if (typeof destination === 'number') {
-      const stack = history.length;
-
       // relative navigation, will ignore options.replace
       history.go(destination);
-
-      const newStack = history.length;
-
-      if (stack !== newStack) {
-        this.onChanged?.();
-      }
-
       return;
     }
 
@@ -187,7 +175,7 @@ export class RouterInstance<T = unknown> {
       path = `${this.base}${path}`;
     }
 
-    const args = this.engine().createHistoryArgs(path);
+    const args = this.engine.createHistoryArgs(path);
 
     if (options?.replace) {
       // replace the current
@@ -197,11 +185,26 @@ export class RouterInstance<T = unknown> {
       history.pushState(...args);
     }
 
+    this.processPath();
     this.onChanged?.();
   }
 
+  updateCache(path: string, data: ClosestRoute<T>) {
+    const { params, route, steps } = data;
+
+    this.cache.params = params;
+    this.cache.currentRoute = route;
+    this.cache.steps = steps;
+
+    this.cache.processedPaths[path] ??= data;
+  }
+
   getElementByDepth(depth: number): T | undefined {
-    return this.cache.steps[depth].element;
+    return this.cache.steps[depth]?.element;
+  }
+
+  getPath(): string {
+    return this.engine.getPath(this.base);
   }
 
   getParams(): Record<string, string> {
@@ -209,7 +212,10 @@ export class RouterInstance<T = unknown> {
   }
 
   getSearchParams(): Record<string, string> {
-    // TODO:
-    return {};
+    return this.engine.getQueryParams();
+  }
+
+  createPathFromNamedDestination(destination: NamedDestinationRequest): string | undefined {
+    return createPathFromNamedDestination(destination, this.cache.routes);
   }
 }

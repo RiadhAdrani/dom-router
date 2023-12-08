@@ -29,12 +29,31 @@ export const getPath: RouterEngine['getPath'] = base => {
   return url.pathname;
 };
 
+export const getQueryParams: RouterEngine['getQueryParams'] = () => {
+  const path = constructUrlWithHashPath(location.hash);
+
+  const search = path.search;
+
+  const params = new URLSearchParams(search);
+
+  const record = Array.from(params.entries()).reduce(
+    (acc, it) => {
+      acc[it[0]] = it[1];
+
+      return acc;
+    },
+    {} as Record<string, string>,
+  );
+
+  return record;
+};
+
 export const createHistoryArgs: RouterEngine['createHistoryArgs'] = (path: string) => {
   const url = `/#${path}`;
 
   return [{ path: url }, '', url];
 };
 
-const hashRouter: RouterEngine = { getPath, createHistoryArgs };
+const hashRouter: RouterEngine = { getPath, createHistoryArgs, getQueryParams };
 
 export default hashRouter;

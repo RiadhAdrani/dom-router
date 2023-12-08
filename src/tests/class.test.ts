@@ -127,11 +127,5 @@ describe('router class', () => {
     it('should return empty record', () => {
       expect(router.getParams()).toStrictEqual({});
     });
-
-    // it('should extract params', () => {
-    //   router.navigate('/users/123');
-
-    //   expect(router.getParams()).toStrictEqual({ id: '123' });
-    // });
   });
 });

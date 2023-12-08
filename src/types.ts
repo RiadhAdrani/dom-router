@@ -116,6 +116,7 @@ export type HistoryArguments = [{ path: string }, string, string];
 
 export interface RouterEngine {
   getPath: (base?: string) => string;
+  getQueryParams: () => Record<string, string>;
   createHistoryArgs: (path: string, base?: string) => HistoryArguments;
 }
 
