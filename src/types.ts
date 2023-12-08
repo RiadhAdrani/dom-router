@@ -122,7 +122,7 @@ export interface RouterEngine {
 export interface RouterCache<T = unknown> {
   routes: Array<CachedRoute<T>>;
   currentRoute?: CachedRoute<T>;
-  processedPaths: Record<string, CachedRoute<T>>;
+  processedPaths: Record<string, ClosestRoute<T>>;
   steps: Array<Route<T>>;
   params: Record<string, string>;
 }

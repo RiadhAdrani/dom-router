@@ -19,25 +19,25 @@ import browserRouter from './browser.router.js';
 import hashRouter from './hash.router.js';
 
 export class RouterInstance<T = unknown> {
-  private routes: Array<Route<T>> = [];
-  private cache: RouterCache<T> = {
+  routes: Array<Route<T>> = [];
+  cache: RouterCache<T> = {
     params: {},
     processedPaths: {},
     routes: [],
     steps: [],
   };
 
-  private catcher: Route<T>;
+  catcher: Route<T>;
 
-  private type: RouterType = RouterType.Browser;
+  type: RouterType = RouterType.Browser;
 
-  private base?: string;
-  private correctScrolling?: boolean;
-  private transoformTitle?: (t: string) => string;
-  private onChanged?: () => void;
-  private onUnloaded?: () => void;
+  base?: string;
+  correctScrolling?: boolean;
+  transoformTitle?: (t: string) => string;
+  onChanged?: () => void;
+  onUnloaded?: () => void;
 
-  private listener: () => void;
+  listener: () => void;
 
   constructor(params: RouterConfig<T>) {
     const {
@@ -123,7 +123,7 @@ export class RouterInstance<T = unknown> {
     const already = this.cache.processedPaths[path];
 
     if (already) {
-      this.cache.currentRoute = already;
+      this.cache.currentRoute = already.route;
       return;
     }
 
@@ -137,7 +137,7 @@ export class RouterInstance<T = unknown> {
 
     // update title
     if (route.title) {
-      const newTitle = this.transoformTitle?.(route.title);
+      const newTitle = this.transoformTitle?.(route.title) ?? route.title;
 
       if (newTitle) {
         document.title = newTitle;
@@ -148,12 +148,23 @@ export class RouterInstance<T = unknown> {
     if (this.correctScrolling) {
       window.scrollTo({ top: 0 });
     }
+
+    this.cache.processedPaths[path] = closest;
   }
 
   navigate(destination: DestinationRequest, options?: DestinationOptions) {
     if (typeof destination === 'number') {
+      const stack = history.length;
+
       // relative navigation, will ignore options.replace
       history.go(destination);
+
+      const newStack = history.length;
+
+      if (stack !== newStack) {
+        this.onChanged?.();
+      }
+
       return;
     }
 
@@ -166,7 +177,7 @@ export class RouterInstance<T = unknown> {
       const generated = createPathFromNamedDestination(destination, this.cache.routes);
 
       if (typeof generated !== 'string') {
-        throw new Error(`named path "${destination.name}" is not found`);
+        throw new Error(err(`named path "${destination.name}" is not found`));
       }
 
       path = generated;
@@ -185,6 +196,8 @@ export class RouterInstance<T = unknown> {
       // push a new entry
       history.pushState(...args);
     }
+
+    this.onChanged?.();
   }
 
   getElementByDepth(depth: number): T | undefined {
