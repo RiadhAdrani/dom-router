@@ -90,7 +90,7 @@ describe('router class', () => {
       expect(location.pathname).toBe('/test');
     });
 
-    it.only('should navigate relative to the input number', () => {
+    it('should navigate relative to the input number', () => {
       router.navigate('/one');
       router.navigate('/two');
 
