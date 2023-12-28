@@ -171,7 +171,7 @@ export class RouterInstance<T = unknown> {
       path = generated;
     }
 
-    if (this.base) {
+    if (this.base && !path.startsWith(this.base)) {
       path = `${this.base}${path}`;
     }
 
