@@ -121,8 +121,8 @@ export class RouterInstance<T = unknown> {
   processPath() {
     let path = this.engine.getPath(this.base);
 
-    if (path !== '/' && path.endsWith('/')) {
-      path = path.slice(0, -1);
+    if (!path.endsWith('/')) {
+      path += '/';
     }
 
     const cached = this.cache.processedPaths[path];
@@ -153,6 +153,10 @@ export class RouterInstance<T = unknown> {
     if (typeof destination === 'number') {
       // relative navigation, will ignore options.replace
       history.go(destination);
+
+      this.processPath();
+      this.onChanged?.();
+
       return;
     }
 
@@ -217,5 +221,23 @@ export class RouterInstance<T = unknown> {
 
   createPathFromNamedDestination(destination: NamedDestinationRequest): string | undefined {
     return createPathFromNamedDestination(destination, this.cache.routes);
+  }
+
+  toHref(destination: string | NamedDestinationRequest): string | undefined {
+    let href: string | undefined;
+
+    if (typeof destination === 'string') {
+      href = destination;
+    } else {
+      href = this.createPathFromNamedDestination(destination);
+    }
+
+    if (!href) return undefined;
+
+    if (this.base && !href.startsWith(this.base)) {
+      href = `${this.base}${href}`;
+    }
+
+    return href;
   }
 }

@@ -1,6 +1,7 @@
 import { RouterInstance } from '../class.js';
 
 const router = new RouterInstance({
+  base: '/test',
   routes: [
     {
       element: 'layout',
@@ -10,7 +11,10 @@ const router = new RouterInstance({
           path: '/users',
           element: 'users',
           title: 'User',
-          children: [{ path: '/:id', element: 'userId', name: 'User' }],
+          children: [
+            { path: '/', element: 'user home', name: 'UsersRoot' },
+            { path: '/:id', element: 'userId', name: 'User' },
+          ],
         },
       ],
     },
@@ -27,10 +31,16 @@ function render() {
 
   let html = '';
 
+  const navBar = `<a href="${router.toHref({
+    name: 'UsersRoot',
+  })}">Users</a><a href="${router.toHref({ name: 'User', params: { id: '123' } })}">User</a>`;
+
+  html += navBar;
+
   do {
     const el = router.getElementByDepth(i);
 
-    html += `<h1>${el}</h1>`;
+    html += `<h1>${el} ${router.getParams().id}</h1>`;
 
     i++;
   } while (router.getElementByDepth(i));
@@ -39,12 +49,3 @@ function render() {
 }
 
 render();
-
-router.navigate('/?hello=world');
-
-const path = router.createPathFromNamedDestination({
-  name: 'User',
-  params: { id: '1' },
-});
-
-router.navigate(path ?? '/');
