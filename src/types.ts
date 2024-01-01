@@ -30,12 +30,12 @@ export interface NamedDestinationRequest {
 
 export type PathDestinationRequest = string;
 
-export type DirectionalDestinationRequest = number;
+export type RelativeDestinationRequest = number;
 
 export type DestinationRequest =
   | NamedDestinationRequest
   | PathDestinationRequest
-  | DirectionalDestinationRequest;
+  | RelativeDestinationRequest;
 
 export interface DestinationOptions {
   replace?: boolean;
