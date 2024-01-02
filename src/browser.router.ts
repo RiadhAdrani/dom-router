@@ -1,4 +1,4 @@
-import { RouterEngine } from './types.js';
+import { RouterEngine } from './class.js';
 
 export const getPath = (base?: string): string => {
   let path = location.pathname;
