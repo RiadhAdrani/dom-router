@@ -1,8 +1,9 @@
-import { RouterInstance } from '../class.js';
+import { Router } from '../class.js';
 
-const router = new RouterInstance({
+const router = new Router({
   base: '/test',
   routes: [
+    { path: '*', element: 'yeet' },
     {
       element: 'layout',
       children: [
@@ -12,15 +13,13 @@ const router = new RouterInstance({
           element: 'users',
           title: 'User',
           children: [
-            { path: '/', element: 'user home', name: 'UsersRoot' },
+            { path: '', element: 'user home', name: 'UsersRoot' },
             { path: '/:id', element: 'userId', name: 'User' },
           ],
         },
       ],
     },
   ],
-  catchAllElement: 'not found',
-
   onChanged() {
     render();
   },
@@ -40,7 +39,7 @@ function render() {
   do {
     const el = router.getElementByDepth(i);
 
-    html += `<h1>${el} ${router.getParams().id}</h1>`;
+    html += `<h1>${el}</h1>`;
 
     i++;
   } while (router.getElementByDepth(i));

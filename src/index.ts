@@ -5,6 +5,18 @@ export const isUrlNavigatable = (url: string): boolean => {
   return url.startsWith('/');
 };
 
-export { RouterInstance } from './class.js';
+export { Router } from './class.js';
 
-export * from './types.js';
+export type {
+  RouterType,
+  RouterConfig,
+  IndexRawRoute,
+  CatchRawRoute,
+  LayoutRawRoute,
+  PathRawRoute,
+  RawRoute,
+  DestinationOptions,
+  DestinationRequest,
+  RelativeDestinationRequest,
+  NamedDestinationRequest,
+} from './class.js';
