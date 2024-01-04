@@ -197,11 +197,17 @@ export enum RouterType {
 }
 
 export interface RouterConfig<T = unknown> {
+  /** array of routes that will be considered by the router */
   routes: Array<RawRoute<T>>;
+  /** handler that will run each time the url changes */
   onChanged: () => void;
+  /** router type, ``Browser`` by default */
   type?: RouterType;
+  /** router base, should start with `/` */
   base?: string;
+  /** define if the router should scroll the document body to the top */
   correctScrolling?: boolean;
+  /** function that will transform a title, useful for setting title prefix and suffixes */
   transformTitle?: (title?: string) => string;
 }
 
@@ -365,6 +371,11 @@ export class RouterError extends Error {
   }
 }
 
+/**
+ * ### Router
+ *
+ * create a router object that manages and react to location/history changes.
+ */
 export class Router<T = unknown> {
   routes: Record<string, Route<T>> = {};
   cache: Cache<T> = {
@@ -382,6 +393,7 @@ export class Router<T = unknown> {
   listener: () => void;
   transformTitle: RouterConfig['transformTitle'];
 
+  /** create a new router object */
   constructor(config: RouterConfig<T>) {
     const { onChanged, routes, base, correctScrolling, transformTitle, type } = config;
 
@@ -413,14 +425,17 @@ export class Router<T = unknown> {
     this.processPath();
   }
 
+  /** get the appropriate router engine : `Browser` or `Hash` */
   get engine(): RouterEngine {
     return this.type === RouterType.Browser ? browserRouter : hashRouter;
   }
 
+  /** unload router and remove listeners */
   unload() {
     window.removeEventListener('popstate', this.listener);
   }
 
+  /** process current path and return a `boolean` that indicates if an update should happen or not */
   processPath(): boolean {
     // check if something changed in the url
     const newURL = location.href;
@@ -464,6 +479,7 @@ export class Router<T = unknown> {
     return true;
   }
 
+  /** navigate to the given destination and perform necessary updates if needed. */
   navigate(destination: DestinationRequest, options?: DestinationOptions) {
     if (typeof destination === 'number') {
       // relative navigation, will ignore options.replace
@@ -506,22 +522,27 @@ export class Router<T = unknown> {
     }
   }
 
+  /** get element at a given depth or `undefined` otherwise */
   getElementByDepth(depth: number): T | undefined {
     return this.cache.steps.at(depth);
   }
 
+  /** get current path */
   getPath(): string {
     return this.engine.getPath(this.base);
   }
 
+  /** get closest route params */
   getParams(): Record<string, string | undefined> {
     return this.cache.params;
   }
 
+  /** get current route search query params */
   getSearchParams(): Record<string, string> {
     return this.engine.getQueryParams();
   }
 
+  /** transform a destination route to a valid href string or `undefined` otherwise */
   toHref(destination: string | NamedDestinationRequest): string | undefined {
     let href: string | undefined;
 
