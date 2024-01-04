@@ -438,7 +438,15 @@ export class Router<T = unknown> {
       this.cache.processed[path] = target;
     }
 
-    this.cache.params = target.params;
+    // decoding params
+    this.cache.params = Object.keys(target.params).reduce(
+      (acc, key) => {
+        acc[key] = decodeURI(target.params[key]);
+
+        return acc;
+      },
+      {} as Record<string, string | undefined>,
+    );
     this.cache.url = newURL;
     this.cache.steps = target.steps;
 
