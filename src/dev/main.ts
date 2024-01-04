@@ -1,9 +1,11 @@
-import { Router } from '../class.js';
+import { Router, RouterType } from '../class.js';
+import { element as el } from '@riadh-adrani/domer';
 
 const router = new Router({
   base: '/test',
+  type: RouterType.Hash,
   routes: [
-    { path: '*', element: 'yeet' },
+    { path: '*', element: 'not found' },
     {
       element: 'layout',
       children: [
@@ -14,37 +16,53 @@ const router = new Router({
           title: 'User',
           children: [
             { path: '', element: 'user home', name: 'UsersRoot' },
-            { path: '/:id', element: 'userId', name: 'User' },
+            {
+              path: '/:id',
+              element: 'userId',
+              name: 'User',
+              children: [{ path: '*', element: 'no user found' }],
+            },
           ],
         },
       ],
     },
   ],
-  onChanged() {
-    render();
-  },
+  onChanged: render,
 });
 
+let app: HTMLElement;
+
+let renderCount = 0;
+
 function render() {
-  let i = 0;
+  renderCount++;
 
-  let html = '';
+  app = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '5px' } }, [
+    el('div', { style: { display: 'flex', flexDirection: 'row' } }, [
+      el('button', { '@click': () => router.navigate('/') }, ['Home']),
+      el('button', { '@click': () => router.navigate('/users') }, ['users']),
+      el('button', { '@click': () => router.navigate('/users/123') }, ['user 123']),
+      el('button', { '@click': () => router.navigate('/users/123/nothing') }, ['user 123 nothing']),
+    ]),
+    el('button', {}, ['Render Count ', renderCount]),
+    ...(() => {
+      const html: Array<unknown> = [];
+      let i = 0;
 
-  const navBar = `<a href="${router.toHref({
-    name: 'UsersRoot',
-  })}">Users</a><a href="${router.toHref({ name: 'User', params: { id: '123' } })}">User</a>`;
+      do {
+        const outlet = router.getElementByDepth(i);
 
-  html += navBar;
+        html.push(el('h1', {}, [outlet]));
 
-  do {
-    const el = router.getElementByDepth(i);
+        i++;
+      } while (router.getElementByDepth(i));
 
-    html += `<h1>${el}</h1>`;
+      return html;
+    })(),
+  ]);
 
-    i++;
-  } while (router.getElementByDepth(i));
-
-  document.body.innerHTML = html;
+  document.body.innerHTML = '';
+  document.body.append(app);
 }
 
 render();

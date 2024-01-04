@@ -201,6 +201,19 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
+"@riadh-adrani/domer@^0.0.3":
+  version "0.0.3"
+  resolved "https://registry.yarnpkg.com/@riadh-adrani/domer/-/domer-0.0.3.tgz#38fcb3da0ec443b6f1e2d02f180ec1238ecfe375"
+  integrity sha512-zbz34fVH9AO3QAgpgDfPJ4Y6Nwu++2aZpCF9vNIAJn2DXPeShd6Zk9THYMGvTAjm5KpMNifDF81vPCwX9hnQAA==
+  dependencies:
+    "@riadh-adrani/obj-utils" "^1.0.2"
+    camelcase "^7.0.1"
+
+"@riadh-adrani/obj-utils@^1.0.2":
+  version "1.0.5"
+  resolved "https://registry.yarnpkg.com/@riadh-adrani/obj-utils/-/obj-utils-1.0.5.tgz#a859da47262da54abc797ddd6b22e34a4927c45d"
+  integrity sha512-ZQYFbRPAalAVrA15CMNTQbVR5JkWYEflKd80vdEri65e+MoKU+D5Zicbh4NjNLdTsEygz2AAtoURkvxSJdMhAg==
+
 "@rollup/rollup-android-arm-eabi@4.6.1":
   version "4.6.1"
   resolved "https://registry.yarnpkg.com/@rollup/rollup-android-arm-eabi/-/rollup-android-arm-eabi-4.6.1.tgz#0ea289f68ff248b50fea5716ca9f65f7d4dba3ae"
@@ -547,6 +560,11 @@ callsites@^3.0.0:
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/callsites/-/callsites-3.1.0.tgz#b3630abd8943432f54b3f0519238e33cd7df2f73"
   integrity sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ==
+
+camelcase@^7.0.1:
+  version "7.0.1"
+  resolved "https://registry.yarnpkg.com/camelcase/-/camelcase-7.0.1.tgz#f02e50af9fd7782bc8b88a3558c32fd3a388f048"
+  integrity sha512-xlx1yCK2Oc1APsPXDL2LdlNP6+uu8OCDdhOBSVT279M/S+y75O30C2VuD8T2ogdePBBl7PfPF4504tnLgX3zfw==
 
 chai@^4.3.10:
   version "4.3.10"
