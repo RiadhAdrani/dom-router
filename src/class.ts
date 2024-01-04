@@ -399,8 +399,11 @@ export class Router<T = unknown> {
     this.routes = flattenRoutes(routes);
 
     this.listener = () => {
-      this.processPath();
-      this.onChanged();
+      const ex = this.processPath();
+
+      if (ex) {
+        this.onChanged();
+      }
     };
 
     window.addEventListener('popstate', this.listener);
@@ -416,13 +419,13 @@ export class Router<T = unknown> {
     window.removeEventListener('popstate', this.listener);
   }
 
-  processPath() {
+  processPath(): boolean {
     // check if something changed in the url
     const newURL = location.href;
 
     if (newURL === this.cache.url) {
       // same url, do nothing
-      return;
+      return false;
     }
 
     const path = this.engine.getPath(this.base);
@@ -446,50 +449,50 @@ export class Router<T = unknown> {
     if (this.correctScrolling) {
       window.scrollTo({ top: 0 });
     }
+
+    return true;
   }
 
   navigate(destination: DestinationRequest, options?: DestinationOptions) {
     if (typeof destination === 'number') {
       // relative navigation, will ignore options.replace
       history.go(destination);
-
-      this.processPath();
-      this.onChanged?.();
-
-      return;
-    }
-
-    let path: string;
-
-    if (typeof destination === 'string') {
-      path = destination;
     } else {
-      // named
-      const generated = createPathFromNamedDestination(destination, this.routes, this.base);
+      let path: string;
 
-      if (typeof generated !== 'string') {
-        throw new RouterError(`named path "${destination.name}" is not found`);
+      if (typeof destination === 'string') {
+        path = destination;
+      } else {
+        // named
+        const generated = createPathFromNamedDestination(destination, this.routes, this.base);
+
+        if (typeof generated !== 'string') {
+          throw new RouterError(`named path "${destination.name}" is not found`);
+        }
+
+        path = generated;
       }
 
-      path = generated;
+      if (this.base && !path.startsWith(this.base)) {
+        path = `${this.base}${path}`;
+      }
+
+      const args = this.engine.createHistoryArgs(path);
+
+      if (options?.replace) {
+        // replace the current
+        history.replaceState(...args);
+      } else {
+        // push a new entry
+        history.pushState(...args);
+      }
     }
 
-    if (this.base && !path.startsWith(this.base)) {
-      path = `${this.base}${path}`;
+    const ex = this.processPath();
+
+    if (ex) {
+      this.onChanged?.();
     }
-
-    const args = this.engine.createHistoryArgs(path);
-
-    if (options?.replace) {
-      // replace the current
-      history.replaceState(...args);
-    } else {
-      // push a new entry
-      history.pushState(...args);
-    }
-
-    this.processPath();
-    this.onChanged?.();
   }
 
   getElementByDepth(depth: number): T | undefined {
