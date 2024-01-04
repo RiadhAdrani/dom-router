@@ -30,7 +30,7 @@ export const getPath: RouterEngine['getPath'] = base => {
 };
 
 export const getQueryParams: RouterEngine['getQueryParams'] = () => {
-  const path = constructUrlWithHashPath(location.hash);
+  const path = constructUrlWithHashPath(location.hash.substring(1));
 
   const search = path.search;
 
