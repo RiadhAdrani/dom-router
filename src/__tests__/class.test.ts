@@ -1,10 +1,30 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vitest } from 'vitest';
 import {
   Route,
+  Router,
+  RouterError,
+  RouterType,
   createPathFromNamedDestination,
   findClosestRoute,
   flattenRoutes,
+  joinPaths,
 } from '../class.js';
+import browserRouter from '../browser.router.js';
+import hashRouter from '../hash.router.js';
+
+describe('joinsPaths', () => {
+  it('should join two paths', () => {
+    expect(joinPaths('/', '/user')).toBe('/user');
+  });
+
+  it('should not duplicate slashes', () => {
+    expect(joinPaths('/test/', '/user')).toBe('/test/user');
+  });
+
+  it('should add slashes if missing', () => {
+    expect(joinPaths('/test/', 'user')).toBe('/test/user');
+  });
+});
 
 describe('flattenRoutes', () => {
   it('should ignore index route', () => {
@@ -22,6 +42,7 @@ describe('flattenRoutes', () => {
         steps: ['home'],
         path: '/',
         params: [],
+        title: undefined,
       },
     });
   });
@@ -32,7 +53,6 @@ describe('flattenRoutes', () => {
         path: '/',
         element: 'home',
         name: 'Home',
-
         children: [{ path: '', element: 'index', name: 'Index', title: 'Index' }],
       },
     ]);
@@ -55,6 +75,7 @@ describe('flattenRoutes', () => {
       '/:id': {
         name: undefined,
         steps: [undefined],
+        title: undefined,
         path: '/:id',
         params: ['id'],
       },
@@ -69,6 +90,7 @@ describe('flattenRoutes', () => {
       steps: [undefined, undefined],
       path: '/:id/about/:user',
       params: ['id', 'user'],
+      title: undefined,
     });
   });
 
@@ -80,6 +102,7 @@ describe('flattenRoutes', () => {
         steps: ['catch'],
         path: '/*',
         params: [],
+        title: undefined,
       },
     });
   });
@@ -95,6 +118,7 @@ describe('flattenRoutes', () => {
         path: '/',
         params: [],
         name: undefined,
+        title: undefined,
       },
     });
   });
@@ -113,6 +137,7 @@ describe('flattenRoutes', () => {
         path: '/',
         params: [],
         name: undefined,
+        title: undefined,
       },
     });
   });
@@ -132,18 +157,21 @@ describe('flattenRoutes', () => {
         path: '/',
         params: [],
         name: undefined,
+        title: undefined,
       },
       '/users': {
         steps: [1, 2],
         path: '/users',
         params: [],
         name: undefined,
+        title: undefined,
       },
       '/users/:id': {
         steps: [1, 2, 3],
         path: '/users/:id',
         params: ['id'],
         name: undefined,
+        title: undefined,
       },
     });
   });
@@ -344,5 +372,187 @@ describe('createPathFromNamedDestination', () => {
         },
       ),
     ).toStrictEqual('/users/search/123');
+  });
+});
+
+describe('Router class', () => {
+  const onChanged = vitest.fn();
+
+  let router: Router;
+
+  beforeAll(() => {
+    router = new Router({
+      onChanged,
+      routes: [
+        { path: '/', name: 'Root' },
+        {
+          path: '/users',
+          name: 'Users',
+          children: [
+            { path: '/:id', title: 'User', name: 'User' },
+            { path: '/search', title: 'Search Users', name: 'SearchUsers' },
+          ],
+        },
+      ],
+    });
+  });
+
+  afterAll(() => {
+    router.unload();
+  });
+
+  describe('constructor', () => {
+    it('should throw when base is invalid', () => {
+      expect(() => new Router({ onChanged, routes: [], base: 'bad' })).toThrow(
+        new RouterError(`invalid base "bad" : should start with "/"`),
+      );
+    });
+
+    it('should default correctScrolling to false', () => {
+      expect(router.correctScrolling).toBe(false);
+    });
+
+    it('should default type to browser', () => {
+      expect(router.type).toBe(RouterType.Browser);
+    });
+
+    it('should assign onChanged', () => {
+      expect(router.onChanged).toStrictEqual(onChanged);
+    });
+  });
+
+  describe('engine', () => {
+    it('should get browser engine', () => {
+      expect(router.engine).toStrictEqual(browserRouter);
+    });
+
+    it('should get browser engine', () => {
+      router.type = RouterType.Hash;
+
+      expect(router.engine).toStrictEqual(hashRouter);
+
+      // reset
+      router.type = RouterType.Browser;
+    });
+  });
+
+  describe('processPath', () => {
+    it('should return false when url is the same as the cached one', () => {
+      expect(router.processPath()).toBe(false);
+    });
+
+    it('should update cache', () => {
+      history.pushState('', '', '/users');
+
+      router.processPath();
+
+      // params
+      const params = router.cache.params;
+      expect(params).toStrictEqual({});
+
+      // steps
+      const steps = router.cache.steps;
+      expect(steps).toStrictEqual([undefined]);
+
+      // url
+      const url = router.cache.url;
+      expect(url).toStrictEqual(location.href);
+
+      // should add the processed path to record
+      const processed = router.cache.processed;
+      expect(processed['/users']).toStrictEqual({
+        route: router.routes['/users'],
+        params: {},
+        steps: [undefined],
+      });
+    });
+
+    it('should decode params', () => {
+      history.pushState('', '', '/users/one two');
+      router.processPath();
+
+      expect(router.cache.params).toStrictEqual({ id: 'one two' });
+    });
+
+    it('should update title', () => {
+      history.pushState('', '', '/users/search');
+      router.processPath();
+
+      expect(document.title).toBe('Search Users');
+    });
+  });
+
+  describe('navigate', () => {
+    it('should change path', () => {
+      router.navigate('/');
+
+      expect(location.pathname).toBe('/');
+    });
+
+    it('should update history state', () => {
+      const spy = vitest.spyOn(history, 'pushState');
+
+      router.navigate('/users');
+
+      expect(spy).toHaveBeenCalledOnce();
+    });
+
+    it('should replace history state', () => {
+      const spy = vitest.spyOn(history, 'replaceState');
+
+      router.navigate('/users/123', { replace: true });
+
+      expect(spy).toHaveBeenCalledOnce();
+    });
+
+    it('should navigate relatively', () => {
+      const spy = vitest.spyOn(history, 'go');
+
+      router.navigate(-1);
+
+      expect(spy).toHaveBeenCalledOnce();
+    });
+
+    it('should run on changed method', () => {
+      const spy = vitest.fn();
+
+      router.onChanged = spy;
+
+      router.navigate('/');
+
+      expect(spy).toHaveBeenCalledOnce();
+    });
+
+    it('should not run (onChanged) when url did not change', () => {
+      const spy = vitest.fn();
+
+      router.onChanged = spy;
+
+      router.navigate(0);
+
+      expect(spy).toHaveBeenCalledTimes(0);
+    });
+  });
+
+  describe('toHref', () => {
+    it('should return string with base', () => {
+      router.base = '/base';
+
+      expect(router.toHref('/any')).toStrictEqual('/base/any');
+
+      router.base = undefined;
+    });
+
+    it('should not add base when already added', () => {
+      router.base = '/base';
+
+      expect(router.toHref('/base/any')).toStrictEqual('/base/any');
+
+      router.base = undefined;
+    });
+
+    it('should retrieve path by name', () => {
+      expect(router.toHref({ name: 'Root' })).toBe('/');
+    });
   });
 });

@@ -119,6 +119,7 @@ export const flattenRoutes = <T = unknown>(
           params: prevParams,
           path,
           steps: [...prevSteps],
+          title: it.title,
         };
 
         route.steps.push(it.element);
@@ -151,6 +152,7 @@ export const flattenRoutes = <T = unknown>(
         path,
         steps,
         name: raw.name,
+        title: raw.title,
       };
 
       if (raw.children) {
@@ -447,6 +449,7 @@ export class Router<T = unknown> {
       },
       {} as Record<string, string | undefined>,
     );
+
     this.cache.url = newURL;
     this.cache.steps = target.steps;
 
@@ -496,9 +499,9 @@ export class Router<T = unknown> {
       }
     }
 
-    const ex = this.processPath();
+    const changed = this.processPath();
 
-    if (ex) {
+    if (changed) {
       this.onChanged?.();
     }
   }
