@@ -33,4 +33,24 @@ describe('hashRouter', () => {
       expect(args).toStrictEqual([{ path: '/#/home' }, '', '/#/home']);
     });
   });
+
+  describe('getQueryParams', () => {
+    it('should return empty object', () => {
+      history.pushState(null, '', '#/');
+
+      expect(hashRouter.getQueryParams()).toStrictEqual({});
+    });
+
+    it('should return object with values', () => {
+      history.pushState(null, '', '#/?value=123&name=test');
+
+      expect(hashRouter.getQueryParams()).toStrictEqual({ value: '123', name: 'test' });
+    });
+
+    it('should decode params', () => {
+      history.pushState(null, '', '#/?value=123&name=test%20one');
+
+      expect(hashRouter.getQueryParams()).toStrictEqual({ value: '123', name: 'test one' });
+    });
+  });
 });

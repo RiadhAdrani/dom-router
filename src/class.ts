@@ -504,6 +504,10 @@ export class Router<T = unknown> {
     return this.cache.params;
   }
 
+  getSearchParams(): Record<string, string> {
+    return this.engine.getQueryParams();
+  }
+
   toHref(destination: string | NamedDestinationRequest): string | undefined {
     let href: string | undefined;
 

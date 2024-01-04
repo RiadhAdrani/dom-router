@@ -3,7 +3,7 @@ import { element as el } from '@riadh-adrani/domer';
 
 const router = new Router({
   base: '/test',
-  type: RouterType.Hash,
+  type: RouterType.Browser,
   routes: [
     { path: '*', element: 'not found' },
     {
@@ -37,6 +37,9 @@ let renderCount = 0;
 function render() {
   renderCount++;
 
+  const search = router.getSearchParams();
+  const params = router.getParams();
+
   app = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '5px' } }, [
     el('div', { style: { display: 'flex', flexDirection: 'row' } }, [
       el('button', { '@click': () => router.navigate('/') }, ['Home']),
@@ -45,6 +48,8 @@ function render() {
       el('button', { '@click': () => router.navigate('/users/123/nothing') }, ['user 123 nothing']),
     ]),
     el('button', {}, ['Render Count ', renderCount]),
+    el('button', {}, ['Search Params ', JSON.stringify(search)]),
+    el('button', {}, ['Params ', JSON.stringify(params)]),
     ...(() => {
       const html: Array<unknown> = [];
       let i = 0;
