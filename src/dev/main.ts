@@ -3,7 +3,7 @@ import { element as el } from '@riadh-adrani/domer';
 
 const router = new Router({
   base: '/test',
-  type: RouterType.Browser,
+  type: RouterType.Hash,
   routes: [
     { path: '*', element: 'not found' },
     {
@@ -47,7 +47,7 @@ function render() {
       el('button', { '@click': () => router.navigate('/users/123') }, ['user 123']),
       el('button', { '@click': () => router.navigate('/users/123/nothing') }, ['user 123 nothing']),
     ]),
-    el('button', {}, ['Render Count ', renderCount]),
+    el('button', { style: { fontSize: `${renderCount}px` } }, ['Render Count ', renderCount]),
     el('button', {}, ['Search Params ', JSON.stringify(search)]),
     el('button', {}, ['Params ', JSON.stringify(params)]),
     ...(() => {
