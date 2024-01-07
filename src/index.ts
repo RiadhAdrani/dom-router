@@ -5,10 +5,9 @@ export const isUrlNavigatable = (url: string): boolean => {
   return url.startsWith('/');
 };
 
-export { Router } from './class.js';
+export { Router, RouterType } from './class.js';
 
 export type {
-  RouterType,
   RouterConfig,
   IndexRawRoute,
   CatchRawRoute,
