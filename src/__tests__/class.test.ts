@@ -43,6 +43,7 @@ describe('flattenRoutes', () => {
         path: '/',
         params: [],
         title: undefined,
+        isIndex: true,
       },
     });
   });
@@ -64,6 +65,7 @@ describe('flattenRoutes', () => {
         title: 'Index',
         path: '/',
         params: [],
+        isIndex: true,
       },
     });
   });
@@ -83,11 +85,13 @@ describe('flattenRoutes', () => {
   });
 
   it('should append params', () => {
-    const res = flattenRoutes([{ path: '/:id', children: [{ path: '/about/:user' }] }]);
+    const res = flattenRoutes([
+      { path: '/:id', children: [{ path: '/about', children: [{ path: '/:user' }] }] },
+    ]);
 
     expect(res['/:id/about/:user']).toStrictEqual({
       name: undefined,
-      steps: [undefined, undefined],
+      steps: [undefined, undefined, undefined],
       path: '/:id/about/:user',
       params: ['id', 'user'],
       title: undefined,
@@ -119,6 +123,7 @@ describe('flattenRoutes', () => {
         params: [],
         name: undefined,
         title: undefined,
+        isIndex: true,
       },
     });
   });
@@ -138,6 +143,7 @@ describe('flattenRoutes', () => {
         params: [],
         name: undefined,
         title: undefined,
+        isIndex: true,
       },
     });
   });
@@ -157,6 +163,7 @@ describe('flattenRoutes', () => {
         path: '/',
         params: [],
         name: undefined,
+        isIndex: true,
         title: undefined,
       },
       '/users': {
@@ -183,6 +190,7 @@ describe('findClosestRoute', () => {
       params: [],
       path: '/',
       steps: [1],
+      isIndex: true,
     },
     '/*': {
       params: [],
@@ -234,6 +242,44 @@ describe('findClosestRoute', () => {
       path: '/users/:id/about/:section',
       steps: [1, 2, 3, 5, 6, 7],
     },
+    '/docs': {
+      params: [],
+      path: '/docs',
+      steps: ['docs', 'index'],
+      isIndex: true,
+    },
+    '/docs/api': {
+      params: [],
+      path: '/docs/api',
+      steps: ['docs', 'side', 'index'],
+      isIndex: true,
+    },
+    '/docs/api/function': {
+      params: [],
+      path: '/docs/api/function',
+      steps: ['docs', 'side', 'function'],
+    },
+    '/cs': {
+      params: [],
+      path: '/cs',
+      steps: ['cs'],
+    },
+    '/cs/langs': {
+      params: [],
+      path: '/cs/langs',
+      steps: ['cs', 'langs', 'index'],
+      isIndex: true,
+    },
+    '/cs/langs/*': {
+      params: [],
+      path: '/cs/langs/*',
+      steps: ['cs', 'langs', 'not-found'],
+    },
+    '/cs/langs/js': {
+      params: [],
+      path: '/cs/langs/js',
+      steps: ['cs', 'langs', 'js'],
+    },
   };
 
   it('should match exact route (root)', () => {
@@ -244,6 +290,7 @@ describe('findClosestRoute', () => {
         params: [],
         path: '/',
         steps: [1],
+        isIndex: true,
       },
     });
   });
@@ -316,6 +363,31 @@ describe('findClosestRoute', () => {
         params: [],
         path: '',
         steps: [2, 2],
+      },
+    });
+  });
+
+  it('should replace index path with catch-all if not matched and there still segments to process', () => {
+    expect(findClosestRoute('/docs/api/class', routes)).toStrictEqual({
+      steps: ['docs', 'side', -1],
+      params: {},
+      route: {
+        params: [],
+        path: '/docs/api',
+        steps: ['docs', 'side', 'index'],
+        isIndex: true,
+      },
+    });
+  });
+
+  it('should replace index path with local-catch if not matched and there still segments to process', () => {
+    expect(findClosestRoute('/cs/langs/ts', routes)).toStrictEqual({
+      steps: ['cs', 'langs', 'not-found'],
+      params: {},
+      route: {
+        params: [],
+        path: '/cs/langs/*',
+        steps: ['cs', 'langs', 'not-found'],
       },
     });
   });

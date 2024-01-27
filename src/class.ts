@@ -59,6 +59,7 @@ export interface Route<T = unknown> {
   params: Array<string>;
   name?: string;
   title?: string;
+  isIndex?: boolean;
 }
 
 export interface ClosestRoute<T = unknown> {
@@ -97,6 +98,7 @@ export const flattenRoutes = <T = unknown>(
 ): Record<string, Route<T>> => {
   return routes.reduce(
     (acc, it) => {
+      // ignore index route
       if (isIndexRawRoute<T>(it)) return acc;
 
       if (isLayoutRawRoute<T>(it)) {
@@ -111,9 +113,15 @@ export const flattenRoutes = <T = unknown>(
         return acc;
       }
 
+      // ! we should throw when path contains more than one segment
+      const segmentsCount = [...it.path].filter(it => it === '/').length;
+
+      if (segmentsCount > 1) {
+        throw new RouterError('path cannot contain multiple segments like "/segment-1/segment-2"');
+      }
+
       const path = joinPaths(prevPath, it.path);
 
-      // ignore index route
       if (isCatchRawRoute<T>(it)) {
         const route: Route<T> = {
           params: prevParams,
@@ -173,7 +181,13 @@ export const flattenRoutes = <T = unknown>(
 
           route.name = index.name ?? route.name;
           route.title = index.title ?? route.title;
+          route.isIndex = true;
         }
+      }
+
+      // ? special case, when path is "/", we set it as index
+      if (route.path === '/') {
+        route.isIndex = true;
       }
 
       acc[path] = route;
@@ -283,17 +297,31 @@ export const findClosestRoute = <T = unknown>(
     const ctch = joinPaths(lastMatch, '/*');
     const ctchPath = routes[ctch];
 
+    // if we matched an index route, we should replace it with a catch route,
+    // because we didn't reach the end of the steps
+    let $catchStep: T | undefined;
+
+    const isIndex = route?.isIndex;
+
     if (ctchPath) {
       lastMatch = ctch;
       route = routes[lastMatch];
-      steps = [...route.steps];
+      $catchStep = route.steps.at(-1);
     } else {
       // check catch all route
       const all = routes['/*'];
 
       // push the last step, which is the last element that will render
-      steps.push(all?.steps.at(-1));
+      $catchStep = all.steps.at(-1);
     }
+
+    if (isIndex) {
+      const last = steps.length - 1;
+      steps[last] = $catchStep;
+    } else {
+      steps.push($catchStep);
+    }
+
     break;
   }
 
