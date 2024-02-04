@@ -391,6 +391,30 @@ describe('findClosestRoute', () => {
       },
     });
   });
+
+  it('should return undefined when no catch all route is found', () => {
+    const routes: Record<string, Route> = {
+      '/': {
+        params: [],
+        path: '/',
+        steps: ['home'],
+        isIndex: true,
+      },
+    };
+
+    const res = findClosestRoute('/another', routes);
+
+    expect(res).toStrictEqual({
+      steps: [undefined],
+      params: {},
+      route: {
+        params: [],
+        path: '/',
+        steps: ['home'],
+        isIndex: true,
+      },
+    });
+  });
 });
 
 describe('createPathFromNamedDestination', () => {

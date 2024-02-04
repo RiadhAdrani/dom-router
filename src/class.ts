@@ -312,7 +312,7 @@ export const findClosestRoute = <T = unknown>(
       const all = routes['/*'];
 
       // push the last step, which is the last element that will render
-      $catchStep = all.steps.at(-1);
+      $catchStep = all?.steps.at(-1);
     }
 
     if (isIndex) {
